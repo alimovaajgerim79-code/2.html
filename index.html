@@ -1,0 +1,356 @@
+HTML
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивті Тест - iTest жүйесі</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --secondary-color: #eef2f7;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        /* Бастапқы форма стилі */
+        #login-screen form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #004085;
+        }
+
+        /* Тест экраны */
+        #test-screen {
+            display: none;
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .question-box {
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .options-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .options-list li {
+            background: var(--secondary-color);
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .options-list li:hover {
+            background: #d8e2dc;
+        }
+
+        .options-list li.selected {
+            background: #bde0fe;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        /* Қол шапалақтау және қате белгісі үшін анимация */
+        #feedback-animation {
+            text-align: center;
+            font-size: 50px;
+            margin: 15px 0;
+            min-height: 60px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+        }
+
+        /* Нәтиже экраны */
+        #result-screen {
+            display: none;
+            text-align: center;
+        }
+
+        .result-stats {
+            font-size: 20px;
+            margin: 20px 0;
+        }
+
+        .excel-btn {
+            background-color: var(--success-color);
+            margin-top: 15px;
+        }
+        
+        .excel-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. Оқушы деректерін енгізу бөлімі -->
+    <div id="login-screen">
+        <h2>Интерактивті Тест жүйесіне қош келдіңіз!</h2>
+        <form id="user-form" onsubmit="startTest(event)">
+            <div class="form-group">
+                <label for="fullname">Аты-жөніңіз:</label>
+                <input type="text" id="fullname" required placeholder="Мысалы: Аманжол Айдын">
+            </div>
+            <div class="form-group">
+                <label for="grade">Сыныбыңыз:</label>
+                <input type="text" id="grade" required placeholder="Мысалы: 2 «А»">
+            </div>
+            <div class="form-group">
+                <label for="test-date">Күні:</label>
+                <input type="date" id="test-date" required>
+            </div>
+            <button type="submit">Тестті бастау</button>
+        </form>
+    </div>
+
+    <!-- 2. Тест тапсыру бөлімі -->
+    <div id="test-screen">
+        <div class="test-header">
+            <span id="student-info-display"></span>
+            <span id="timer">Уақыт: 10:00</span>
+        </div>
+        <div class="question-box" id="question-text">Сұрақ мәтіні осында шығады...</div>
+        <ul class="options-list" id="options-container">
+            <!-- Жауап нұсқалары -->
+        </ul>
+        <div id="feedback-animation"></div>
+        <div class="nav-buttons">
+            <button id="next-btn" onclick="nextQuestion()" style="display:none;">Келесі сұрақ</button>
+        </div>
+    </div>
+
+    <!-- 3. Нәтиже мен Excel жүктеу бөлімі -->
+    <div id="result-screen">
+        <h2>Тест аяқталды!</h2>
+        <div class="result-stats" id="result-stats-text"></div>
+        <button class="excel-btn" onclick="downloadExcel()">Нәтиже жүктеу (Excel / CSV)</button>
+    </div>
+</div>
+
+<script>
+    // Тест сұрақтары базасы (берілген тақырыптар мен 2-сынып ерекшелігіне сай)
+    const questions = [
+        {
+            question: "1. Компьютерді вирустардан қорғау үшін не қолданылады?",
+            options: ["Антивирустық программа", "Ойын программасы", "Музыкалық плеер"],
+            answer: 0
+        },
+        {
+            question: "2. Есептік жазбаны қорғау үшін ең бірінші не қажет?",
+            options: ["Әдемі сурет", "Сенімді құпиясөз (пароль)", "Бос орын"],
+            answer: 1
+        },
+        {
+            question: "3. Ақпараттың ең кіші өлшем бірлігі қалай аталады?",
+            options: ["Бит", "Байт", "Килобайт"],
+            answer: 0
+        },
+        {
+            question: "4. 1 байтта неше бит бар?",
+            options: ["4 бит", "8 бит", "10 бит"],
+            answer: 1
+        },
+        {
+            question: "5. Құпиясөзді қауіпсіз ету үшін не істеу керек?",
+            options: ["Тек бірдей әріптер жазу", "Әріптер, сандар және символдарды араластыру", "Атын ғана жазу"],
+            answer: 1
+        },
+        {
+            question: "6. Екі сатылы аутентификация дегеніміз не?",
+            options: ["Қос қорғаныс деңгейі (мысалы, код арқылы растау)", "Екі рет компьютерді өшіру", "ЭКРАНды тазалау"],
+            answer: 0
+        },
+        {
+            question: "7. Мәтіндік ақпаратты кодтау жүйелерінің бірін атаңыз:",
+            options: ["ASCII", "Monitor", "Windows"],
+            answer: 0
+        },
+        {
+            question: "8. Деректерді сақтық үшін басқа жерге көшіріп сақтау қалай аталады?",
+            options: ["Мұрағаттау (Архивация)", "Өшіру", "Ауыстыру"],
+            answer: 0
+        }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let studentData = {};
+    let userAnswers = [];
+
+    // Бүгінгі күнді автоматты түрде қою
+    document.getElementById('test-date').valueAsDate = new Date();
+
+    function startTest(event) {
+        event.preventDefault();
+        studentData.name = document.getElementById('fullname').value;
+        studentData.grade = document.getElementById('grade').value;
+        studentData.date = document.getElementById('test-date').value;
+
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('test-screen').style.display = 'block';
+        document.getElementById('student-info-display').innerText = `${studentData.name} | ${studentData.grade}`;
+
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        document.getElementById('feedback-animation').innerHTML = '';
+        document.getElementById('next-btn').style.display = 'none';
+
+        let q = questions[currentQuestionIndex];
+        document.getElementById('question-text').innerText = q.question;
+        
+        let optionsHtml = '';
+        q.options.forEach((opt, index) => {
+            optionsHtml += `<li onclick="selectOption(${index})">${opt}</li>`;
+        });
+        document.getElementById('options-container').innerHTML = optionsHtml;
+    }
+
+    function selectOption(selectedIndex) {
+        let q = questions[currentQuestionIndex];
+        let optionsLi = document.getElementById('options-container').children;
+
+        // Басқа басуды болдырмау үшін барлық ли-ді бұғаттау
+        for(let li of optionsLi) {
+            li.style.pointerEvents = 'none';
+        }
+
+        userAnswers.push({question: q.question, selected: q.options[selectedIndex], correct: q.options[q.answer]});
+
+        if (selectedIndex === q.answer) {
+            score++;
+            optionsLi[selectedIndex].style.backgroundColor = '#d4edda';
+            // Дұрыс жауап үшін қол шапалақтау анимациясы
+            document.getElementById('feedback-animation').innerHTML = '👏 <span style="color: green; font-size: 24px;">Дұрыс! Жарайсың!</span>';
+        } else {
+            optionsLi[selectedIndex].style.backgroundColor = '#f8d7da';
+            optionsLi[q.answer].style.backgroundColor = '#d4edda';
+            // Қате жауап үшін белгі
+            document.getElementById('feedback-animation').innerHTML = '❌ <span style="color: red; font-size: 24px;">Қате!</span>';
+        }
+
+        document.getElementById('next-btn').style.display = 'block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('test-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        
+        let percent = Math.round((score / questions.length) * 100);
+        document.getElementById('result-stats-text').innerHTML = `
+            <b>${studentData.name}</b> (${studentData.grade}), сіздің нәтижеңіз:<br>
+            Жалпы сұрақ: ${questions.length}<br>
+            Дұрыс жауаптар: <b>${score}</b><br>
+            Параметр: <b>${percent}%</b>
+        `;
+    }
+
+    function downloadExcel() {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Аты-жөні,Сыныбы,Күні,Дұрыс жауаптар саны,Жалпы сұрақ\n";
+        csvContent += `"${studentData.name}","${studentData.grade}","${studentData.date}",${score},${questions.length}\n\n`;
+        csvContent += "Сұрақ,Оқушы жауабы,Дұрыс жауап\n";
+        
+        userAnswers.forEach(ans => {
+            csvContent += `"${ans.question}","${ans.selected}","${ans.correct}"\n`;
+        });
+
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Test_Netizhe_${studentData.name}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
